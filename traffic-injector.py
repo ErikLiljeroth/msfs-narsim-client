@@ -117,7 +117,7 @@ def create_msfs_aircraft(
         sim_con.hSimConnect, c_char_p(model_title), c_char_p(b"ABCD"), spawn_pos, req_id
     )
     time.sleep(0.07)
-    # python-simmconnect adds created MSFS object_id as environment variable
+    # python-simmconnect adds created MSFS object_id as environment variable, bt it takes ~0.07sec
     return req_id, int(os.environ["SIMCONNECT_OBJECT_ID"])
 
 
@@ -132,8 +132,8 @@ def update_pos_msfs_aircraft(
         c_double(float(narsim_flight_dict["truth"]["lat"]["#text"])),
         c_double(float(narsim_flight_dict["truth"]["lon"]["#text"])),
         c_double(float(narsim_flight_dict["truth"]["alt"]["#text"]) * METER_TO_FEET),
-        c_double(0),  # <- pitch - how to get from narsim?
-        c_double(0),  # <- bank - how to get from narsim?
+        c_double(float(narsim_flight_dict["truth"]["pitch"]["#text"])),  # <- pitch: added after fix from mbjork
+        c_double(float(narsim_flight_dict["truth"]["bank"]["#text"])),  # <- bank: added after fix from mbjork
         c_double(int(narsim_flight_dict["truth"]["alt"]["#text"])),
         DWORD(
             0
@@ -184,6 +184,7 @@ class ClientFlightsCounter:
     def __init__(self):
         self.flight_callsigns = []
         self.flight_objects = []
+        # flight object includes callsign, object_id, ac_model, ac_type
 
     def contains_callsign(self, callsign: str) -> bool:
         return callsign in self.flight_callsigns
@@ -198,7 +199,7 @@ class ClientFlightsCounter:
             int: object_ID if found otherwise None
         """
         return next(
-            (item for item in self.flight_objects if item["callsign"] == callsign), None
+            (item['object_id'] for item in self.flight_objects if item["callsign"] == callsign), None
         )
 
     def add_flight(self, callsign: str, object_ID: int) -> None:
@@ -244,3 +245,16 @@ async def traffic_injector_process(s: socket.socket, simc_injector: SimConnect) 
             # if the narsim flight removed on narsim side -> delete | TODO
 
         asyncio.sleep(time_period_injector)
+
+
+def main():
+    # config
+    HOST = "127.0.0.1"
+    PORT = 5678
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        s.connect((HOST, PORT))
+        msg = s.recv(1024).decode()
+        print(msg)
+
+if __name__ == "__main__":
+    main()
