@@ -10,6 +10,8 @@ from SimConnect import SimConnect, AircraftRequests
 
 # Constants
 KNOTS_TO_METER_PER_SEC = 0.51444
+FEET_TO_METER = 0.3048
+DEG_TO_RAD = 0.0174532925
 
 # config for e.g. connections
 config = configparser.ConfigParser()
@@ -21,6 +23,7 @@ NARSIM_PORT = int(config["NARSIM"]["PORT"])
 
 # flight plan
 CALLSIGN = config["flightplan"]["CALLSIGN"]
+ICAO_ID = int(config["flightplan"]["ICAO_ID"])
 
 # Time interval of user flight feeder
 TIME_INTERVAL_USER_FLIGHT_FEEDER = 1 / float(
@@ -31,14 +34,17 @@ TIME_INTERVAL_USER_FLIGHT_FEEDER = 1 / float(
 SEND_DATA_TO_NARSIM = config["user-flight-feeder"]["SEND_DATA_TO_NARSIM"]
 SEND_DATA_TO_NARSIM = SEND_DATA_TO_NARSIM == "True"
 
+# TODO: add pitch and bank
 XML_TEMPLATE_TRUTH = (
     '<?xml version="1.0" encoding="UTF-8"?>'
     '<NLRIn source="NARSIM" xmlns:sti="http://www.w3.org/2001/XMLSchema-instance">'
-    '<truth><callsign>{callsign}</callsign><ssr_s>877777</ssr_s><lat unit="deg">{lat}</lat>'
-    '<lon unit="deg">{lon}</lon><alt unit="ft">{alt}</alt><gspd unit="ms">{gspd}</gspd>'
-    '<crs unit="degrees">{crs}</crs><v_rate unit="ms">{v_rate}</v_rate>'
-    "<turn_rate>{turn_rate}</turn_rate></truth></NLRIn>"
+    '<truth><callsign>{callsign}</callsign><ssr_s>{icao_id}</ssr_s><ssr_a>701</ssr_a><ssr_c>{alt}</ssr_c><ssr_on>2</ssr_on><lat unit="deg">{lat}</lat>'
+    '<lon unit="deg">{lon}</lon><height unit="ft">4000</height><alt unit="ft">{alt}</alt><gspd unit="ms">{gspd}</gspd>'
+    '<crs unit="degrees">{crs}</crs><v_rate unit="ms">{v_rate}</v_rate></truth></NLRIn>'
 )
+# TODO: the turn_rate sent to Narsim seems to be bugged and becomes a big value. Seems to be ok sent from user_flight_feeder, but badly parsed in Narsim Gateway?
+# '<turn_rate unit="rad">{turn_rate}</turn_rate>
+
 
 """
 TODO: add support to send Flight Plan to Narsim. Preliminary xml template below.
@@ -58,7 +64,7 @@ LON_VARNAME = "PLANE_LONGITUDE"  # [degrees]
 ALT_VARNAME = "PLANE_ALTITUDE"  # [ft]
 GSPD_VARNAME = "GROUND_VELOCITY"  # [kts]
 CRS_VARNAME = "PLANE_HEADING_DEGREES_TRUE"  # [radians]
-V_RATE_VARNAME = "VELOCITY_BODY_Y"  # [feet per second]
+V_RATE_VARNAME = "VERTICAL_SPEED"  # [feet per second]
 TURN_RATE_VARNAME = "ROTATION_VELOCITY_BODY_Y"  # [feet per second] MSFS SDK doc typo?
 LONG_ACC_VARNAME = "ACCELERATION_BODY_Z"  #  [feet per second2]
 V_ACC_VARNAME = "ACCELERATION_BODY_Y"  # [feet per second2]
@@ -156,13 +162,14 @@ def user_flight_feeder_main() -> None:
                         translation_dict = {
                             "callsign": CALLSIGN,
                             "toa": toa,
+                            "icao_id": ICAO_ID,
                             "lat": var_finder["lat"].get(),
                             "lon": var_finder["lon"].get(),
                             "alt": var_finder["alt"].get(),
                             "gspd": var_finder["gspd"].get() * KNOTS_TO_METER_PER_SEC,
                             "crs": var_finder["crs"].get(),
-                            "v_rate": var_finder["v_rate"].get(),
-                            "turn_rate": var_finder["turn_rate"].get(),
+                            "v_rate": var_finder["v_rate"].get() * FEET_TO_METER,
+                            "turn_rate": var_finder["turn_rate"].get() * DEG_TO_RAD,
                             "long_acc": var_finder["long_acc"].get(),
                             "v_acc": var_finder["v_acc"].get(),
                         }
