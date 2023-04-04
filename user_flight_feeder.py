@@ -11,6 +11,7 @@ from SimConnect import SimConnect, AircraftRequests
 # Constants
 KNOTS_TO_METER_PER_SEC = 0.51444
 FEET_TO_METER = 0.3048
+METER_TO_FEET = 3.2808399
 DEG_TO_RAD = 0.0174532925
 
 # config for e.g. connections
@@ -24,6 +25,9 @@ NARSIM_PORT = int(config["NARSIM"]["PORT"])
 # flight plan
 CALLSIGN = config["flightplan"]["CALLSIGN"]
 ICAO_ID = int(config["flightplan"]["ICAO_ID"])
+# SQUAWK_DECIMAL = str(int(config["flightplan"]["SQUAWK_OKTAL"], 8))
+# print(SQUAWK_DECIMAL)
+SQUAWK_OKTAL = config["flightplan"]["SQUAWK_OKTAL"]
 
 # Time interval of user flight feeder
 TIME_INTERVAL_USER_FLIGHT_FEEDER = 1 / float(
@@ -38,11 +42,12 @@ SEND_DATA_TO_NARSIM = SEND_DATA_TO_NARSIM == "True"
 XML_TEMPLATE_TRUTH = (
     '<?xml version="1.0" encoding="UTF-8"?>'
     '<NLRIn source="NARSIM" xmlns:sti="http://www.w3.org/2001/XMLSchema-instance">'
-    '<truth><callsign>{callsign}</callsign><ssr_s>{icao_id}</ssr_s><ssr_a>701</ssr_a><ssr_c>{alt}</ssr_c><ssr_on>2</ssr_on><lat unit="deg">{lat}</lat>'
+    '<truth><callsign>{callsign}</callsign><ssr_s>{icao_id}</ssr_s><ssr_a>{ssr_a}</ssr_a><ssr_c>{ssr_c}</ssr_c><lat unit="deg">{lat}</lat>'
     '<lon unit="deg">{lon}</lon><height unit="ft">4000</height><alt unit="ft">{alt}</alt><gspd unit="ms">{gspd}</gspd>'
-    '<crs unit="degrees">{crs}</crs><v_rate unit="ms">{v_rate}</v_rate></truth></NLRIn>'
+    '<crs unit="degrees">{crs}</crs><v_rate unit="ms">{v_rate}</v_rate><pitch>{pitch}</pitch><bank>{bank}</bank></truth></NLRIn>'
 )
-# TODO: the turn_rate sent to Narsim seems to be bugged and becomes a big value. Seems to be ok sent from user_flight_feeder, but badly parsed in Narsim Gateway?
+# TODO: the turn_rate sent to Narsim seems to be bugged and becomes a big value.
+# #Seems to be ok sent from user_flight_feeder, but badly parsed in Narsim Gateway?
 # '<turn_rate unit="rad">{turn_rate}</turn_rate>
 
 
@@ -57,7 +62,7 @@ XML_TEMPLATE_FLIGHTPLAN = """<?xml version="1.0" encoding="UTF-8"?>
 
 """
 MSFS event variable names for SimConnect
-Confirmed and working as of 29 nov 2022. Unit as received from SimConnect.
+Confirmed and working as of 29 nov 2022. Unit as received from SimConnect according to MSFS SDK docs.
 """
 LAT_VARNAME = "PLANE_LATITUDE"  # [degrees]
 LON_VARNAME = "PLANE_LONGITUDE"  # [degrees]
@@ -68,6 +73,13 @@ V_RATE_VARNAME = "VERTICAL_SPEED"  # [feet per second]
 TURN_RATE_VARNAME = "ROTATION_VELOCITY_BODY_Y"  # [feet per second] MSFS SDK doc typo?
 LONG_ACC_VARNAME = "ACCELERATION_BODY_Z"  #  [feet per second2]
 V_ACC_VARNAME = "ACCELERATION_BODY_Y"  # [feet per second2]
+PITCH_VARNAME = (
+    "PLANE_PITCH_DEGREES"  # [radians, "name mentions degrees, SDK says radians"]
+)
+BANK_VARNAME = (
+    "PLANE_BANK_DEGREES"  # [radians, "name mentions degrees, SDK says radians"]
+)
+PRESSURE_ALTITUDE_VARNAME = "PRESSURE_ALTITUDE"
 
 
 def connect_msfs() -> AircraftRequests:
@@ -151,6 +163,9 @@ def user_flight_feeder_main() -> None:
                             "turn_rate": ac_requests.find(TURN_RATE_VARNAME),
                             "long_acc": ac_requests.find(LONG_ACC_VARNAME),
                             "v_acc": ac_requests.find(V_ACC_VARNAME),
+                            "pitch": ac_requests.find(PITCH_VARNAME),
+                            "bank": ac_requests.find(BANK_VARNAME),
+                            "ssr_c": ac_requests.find(PRESSURE_ALTITUDE_VARNAME),
                         }
 
                         msfs_data_stream_is_initialized = True
@@ -163,6 +178,7 @@ def user_flight_feeder_main() -> None:
                             "callsign": CALLSIGN,
                             "toa": toa,
                             "icao_id": ICAO_ID,
+                            "ssr_a": SQUAWK_OKTAL,
                             "lat": var_finder["lat"].get(),
                             "lon": var_finder["lon"].get(),
                             "alt": var_finder["alt"].get(),
@@ -172,11 +188,16 @@ def user_flight_feeder_main() -> None:
                             "turn_rate": var_finder["turn_rate"].get() * DEG_TO_RAD,
                             "long_acc": var_finder["long_acc"].get(),
                             "v_acc": var_finder["v_acc"].get(),
+                            "pitch": -var_finder["pitch"].get(),
+                            "bank": var_finder["bank"].get(),
+                            "ssr_c": int(
+                                round(var_finder["ssr_c"].get() * METER_TO_FEET, -2)
+                            ),
                         }
                         xml_output = XML_TEMPLATE_TRUTH.format(**translation_dict)
-                        # print(xml_output)
-                        print(translation_dict)
-                        print()
+                        print(xml_output)
+                        # print(translation_dict)
+                        # print()
 
                         try:
                             if SEND_DATA_TO_NARSIM:
