@@ -38,21 +38,23 @@ TIME_INTERVAL_USER_FLIGHT_FEEDER = 1 / float(
 SEND_DATA_TO_NARSIM = config["user-flight-feeder"]["SEND_DATA_TO_NARSIM"]
 SEND_DATA_TO_NARSIM = SEND_DATA_TO_NARSIM == "True"
 
-# TODO: add pitch and bank
 XML_TEMPLATE_TRUTH = (
     '<?xml version="1.0" encoding="UTF-8"?>'
     '<NLRIn source="NARSIM" xmlns:sti="http://www.w3.org/2001/XMLSchema-instance">'
-    '<truth><callsign>{callsign}</callsign><ssr_s>{icao_id}</ssr_s><ssr_a>{ssr_a}</ssr_a><ssr_c>{ssr_c}</ssr_c><lat unit="deg">{lat}</lat>'
-    '<lon unit="deg">{lon}</lon><height unit="ft">4000</height><alt unit="ft">{alt}</alt><gspd unit="ms">{gspd}</gspd>'
+    '<truth><callsign>{callsign}</callsign><ssr_a>{ssr_a}</ssr_a><ssr_c>{ssr_c}</ssr_c><ssr_s>{ssr_s}</ssr_s><lat unit="deg">{lat}</lat>'
+    '<lon unit="deg">{lon}</lon><alt unit="ft">{alt}</alt><gspd unit="ms">{gspd}</gspd>'
     '<crs unit="degrees">{crs}</crs><v_rate unit="ms">{v_rate}</v_rate><pitch>{pitch}</pitch><bank>{bank}</bank></truth></NLRIn>'
 )
 # TODO: the turn_rate sent to Narsim seems to be bugged and becomes a big value.
 # #Seems to be ok sent from user_flight_feeder, but badly parsed in Narsim Gateway?
+# Temporarily removed
 # '<turn_rate unit="rad">{turn_rate}</turn_rate>
+# TODO: further investigate altitudes, there is the indicated altitude, pressure altitude, etc.
+# removed from xml: <height unit="ft">4000</height>
 
 
 """
-TODO: add support to send Flight Plan to Narsim. Preliminary xml template below.
+TODO: add support to send Flight Plan to Narsim. Preliminary example xml template below.
 """
 XML_TEMPLATE_FLIGHTPLAN = """<?xml version="1.0" encoding="UTF-8"?>
 <NLRIn source="NARSIM" xmlns:sti="http://www.w3.org/2001/XMLSchema-instance">'
@@ -176,9 +178,12 @@ def user_flight_feeder_main() -> None:
                     try:
                         translation_dict = {
                             "callsign": CALLSIGN,
-                            "toa": toa,
-                            "icao_id": ICAO_ID,
+                            #"toa": toa,
                             "ssr_a": SQUAWK_OKTAL,
+                            "ssr_c": int(
+                                round(var_finder["ssr_c"].get() * METER_TO_FEET, -2)
+                            ),
+                            "ssr_s": ICAO_ID,
                             "lat": var_finder["lat"].get(),
                             "lon": var_finder["lon"].get(),
                             "alt": var_finder["alt"].get(),
@@ -189,10 +194,7 @@ def user_flight_feeder_main() -> None:
                             "long_acc": var_finder["long_acc"].get(),
                             "v_acc": var_finder["v_acc"].get(),
                             "pitch": -var_finder["pitch"].get(),
-                            "bank": var_finder["bank"].get(),
-                            "ssr_c": int(
-                                round(var_finder["ssr_c"].get() * METER_TO_FEET, -2)
-                            ),
+                            "bank": var_finder["bank"].get()
                         }
                         xml_output = XML_TEMPLATE_TRUTH.format(**translation_dict)
                         print(xml_output)
