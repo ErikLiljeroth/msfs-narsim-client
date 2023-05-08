@@ -17,7 +17,7 @@ METER_PER_SECOND_TO_KNOTS = 1.94384449
 
 
 def flight_xml_to_dict(flight_object: str) -> dict:
-    """Convert an xml flight object from Narsim to a Python dictionary.
+    """Convert an xml flight object (one flight) from Narsim to a Python dictionary.
 
     Args:
         flight_object (str): xml string
@@ -180,7 +180,7 @@ def delete_msfs_aircraft(sim_con: SimConnect, object_id: int) -> int:
     return req_id
 
 
-class ClientFlightsCounter:
+class NarsimFlightsProcessor:
     def __init__(self):
         self.flight_callsigns = []
         self.flight_objects = []
@@ -217,7 +217,7 @@ async def traffic_injector_process(s: socket.socket, simc_injector: SimConnect) 
     config = configparser.ConfigParser()
     config.read("config.conf")
     time_period_injector = 1 / config["traffic-injector"]["frq"]
-    cfc = ClientFlightsCounter()
+    cfc = NarsimFlightsProcessor()
     ac_model = "Airbus A320 Neo Asobo"
 
     dict_flights = []
@@ -243,6 +243,7 @@ async def traffic_injector_process(s: socket.socket, simc_injector: SimConnect) 
                 # cfc.add_flight(callsign)
                 pass
             # if the narsim flight removed on narsim side -> delete | TODO
+            # Maybe the logic should be to see if an update has happened within x minutes else delete.
 
         asyncio.sleep(time_period_injector)
 
