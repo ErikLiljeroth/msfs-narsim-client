@@ -42,7 +42,7 @@ XML_TEMPLATE_TRUTH = (
     '<?xml version="1.0" encoding="UTF-8"?>'
     '<NLRIn source="NARSIM" xmlns:sti="http://www.w3.org/2001/XMLSchema-instance">'
     '<truth><callsign>{callsign}</callsign><ssr_a>{ssr_a}</ssr_a><ssr_c>{ssr_c}</ssr_c><ssr_s>{ssr_s}</ssr_s><lat unit="deg">{lat}</lat>'
-    '<lon unit="deg">{lon}</lon><alt unit="ft">{alt}</alt><gspd unit="ms">{gspd}</gspd>'
+    '<lon unit="deg">{lon}</lon><alt unit="ft">{alt}</alt><height unit="m">{height}</height><gspd unit="ms">{gspd}</gspd>'
     '<crs unit="degrees">{crs}</crs><v_rate unit="ms">{v_rate}</v_rate><pitch>{pitch}</pitch><bank>{bank}</bank></truth></NLRIn>'
 )
 # TODO: the turn_rate sent to Narsim seems to be bugged and becomes a big value.
@@ -69,6 +69,7 @@ Confirmed and working as of 29 nov 2022. Unit as received from SimConnect accord
 LAT_VARNAME = "PLANE_LATITUDE"  # [degrees]
 LON_VARNAME = "PLANE_LONGITUDE"  # [degrees]
 ALT_VARNAME = "PLANE_ALTITUDE"  # [ft]
+HEIGHT_VARNAME = "PLANE_ALTITUDE"  # [ft]
 GSPD_VARNAME = "GROUND_VELOCITY"  # [kts]
 CRS_VARNAME = "PLANE_HEADING_DEGREES_TRUE"  # [radians]
 V_RATE_VARNAME = "VERTICAL_SPEED"  # [feet per second]
@@ -159,6 +160,7 @@ def user_flight_feeder_main() -> None:
                             "lat": ac_requests.find(LAT_VARNAME),
                             "lon": ac_requests.find(LON_VARNAME),
                             "alt": ac_requests.find(ALT_VARNAME),
+                            "height": ac_requests.find(HEIGHT_VARNAME),
                             "gspd": ac_requests.find(GSPD_VARNAME),
                             "crs": ac_requests.find(CRS_VARNAME),
                             "v_rate": ac_requests.find(V_RATE_VARNAME),
@@ -178,15 +180,17 @@ def user_flight_feeder_main() -> None:
                     try:
                         translation_dict = {
                             "callsign": CALLSIGN,
-                            #"toa": toa,
+                            # "toa": toa,
                             "ssr_a": SQUAWK_OKTAL,
                             "ssr_c": int(
                                 round(var_finder["ssr_c"].get() * METER_TO_FEET, -2)
+                                / 100
                             ),
                             "ssr_s": ICAO_ID,
                             "lat": var_finder["lat"].get(),
                             "lon": var_finder["lon"].get(),
                             "alt": var_finder["alt"].get(),
+                            "height": var_finder["height"].get() * FEET_TO_METER,
                             "gspd": var_finder["gspd"].get() * KNOTS_TO_METER_PER_SEC,
                             "crs": var_finder["crs"].get(),
                             "v_rate": var_finder["v_rate"].get() * FEET_TO_METER,
@@ -194,10 +198,11 @@ def user_flight_feeder_main() -> None:
                             "long_acc": var_finder["long_acc"].get(),
                             "v_acc": var_finder["v_acc"].get(),
                             "pitch": -var_finder["pitch"].get(),
-                            "bank": var_finder["bank"].get()
+                            "bank": var_finder["bank"].get(),
                         }
                         xml_output = XML_TEMPLATE_TRUTH.format(**translation_dict)
                         print(xml_output)
+                        # print(translation_dict["ssr_c"])
                         # print(translation_dict)
                         # print()
 
