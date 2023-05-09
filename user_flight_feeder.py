@@ -31,11 +31,11 @@ SQUAWK_OKTAL = config["flightplan"]["SQUAWK_OKTAL"]
 
 # Time interval of user flight feeder
 TIME_INTERVAL_USER_FLIGHT_FEEDER = 1 / float(
-    config["user-flight-feeder"]["UPDATE_FREQUENCY"]
+    config["user_flight_feeder"]["UPDATE_FREQUENCY"]
 )
 
 # Set to False in config for debug with MSFS only
-SEND_DATA_TO_NARSIM = config["user-flight-feeder"]["SEND_DATA_TO_NARSIM"]
+SEND_DATA_TO_NARSIM = config["user_flight_feeder"]["SEND_DATA_TO_NARSIM"]
 SEND_DATA_TO_NARSIM = SEND_DATA_TO_NARSIM == "True"
 
 XML_TEMPLATE_TRUTH = (
